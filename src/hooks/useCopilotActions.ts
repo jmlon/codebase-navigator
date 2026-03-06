@@ -2,7 +2,8 @@
 
 import { useCopilotAction } from "@copilotkit/react-core";
 import { useAppStore } from "@/store";
-import { findFilesByQuery, categorizeFileType, flattenTree } from "@/lib/analyzer";
+import { findFilesByQuery, categorizeFileType, flattenTree, extractImports, buildDependencyNodes } from "@/lib/analyzer";
+import { fetchFile } from "@/lib/fetch-file";
 import type { FlowNode, FlowEdge, RelevantFile } from "@/types";
 
 export function useCopilotActions() {
@@ -54,31 +55,44 @@ export function useCopilotActions() {
           relevance: "Matched query pattern",
         }));
 
-        const nodes: FlowNode[] = matchedPaths.map((p, i) => ({
-          id: `node-${i}`,
-          type: categorizeFileType(p),
-          label: p.split("/").pop() || p,
-          metadata: { fullPath: p },
-        }));
+        const capped = matchedPaths.slice(0, 15);
+        let graph: { nodes: FlowNode[]; edges: FlowEdge[] };
 
-        const edges: FlowEdge[] = [];
-        for (let i = 1; i < nodes.length && i < 15; i++) {
-          edges.push({
-            id: `edge-${i}`,
-            source: nodes[0].id,
-            target: nodes[i].id,
-            type: "flow" as const,
+        if (repo.repoInfo && capped.length > 0) {
+          const fileDataPromises = capped.map(async (p) => {
+            try {
+              const content = await fetchFile(repo.repoInfo!.owner, repo.repoInfo!.repo, p, repo.repoInfo!.branch);
+              return { path: p, imports: extractImports(content) };
+            } catch {
+              return { path: p, imports: [] };
+            }
           });
+          const fileData = await Promise.all(fileDataPromises);
+          graph = buildDependencyNodes(fileData);
+
+          for (const node of graph.nodes) {
+            node.type = categorizeFileType(node.metadata?.fullPath || node.id);
+          }
+        } else {
+          graph = {
+            nodes: capped.map((p, i) => ({
+              id: `node-${i}`,
+              type: categorizeFileType(p),
+              label: p.split("/").pop() || p,
+              metadata: { fullPath: p },
+            })),
+            edges: [],
+          };
         }
 
         setAnalysisResult({
           explanation,
           relevantFiles: files,
-          flowDiagram: { nodes, edges },
+          flowDiagram: graph,
         });
 
-        if (nodes.length > 0) {
-          setVisualization(nodes, edges, "architecture");
+        if (graph.nodes.length > 0) {
+          setVisualization(graph.nodes, graph.edges, "dependency");
         }
 
         return `Analysis complete. Found ${files.length} relevant files. The visualization and file list have been updated.`;
@@ -110,16 +124,8 @@ export function useCopilotActions() {
       }
 
       try {
-        const repoUrl = `${repo.repoInfo.owner}/${repo.repoInfo.repo}`;
-        const res = await fetch(
-          `/api/github/file?repo=${encodeURIComponent(repoUrl)}&path=${encodeURIComponent(filePath)}&ref=${encodeURIComponent(repo.repoInfo.branch)}`
-        );
-        if (!res.ok) {
-          const body = await res.json();
-          throw new Error(body.error || "Failed to fetch file");
-        }
-        const data = await res.json();
-        setCodeViewer(data.path, data.content);
+        const content = await fetchFile(repo.repoInfo.owner, repo.repoInfo.repo, filePath, repo.repoInfo.branch);
+        setCodeViewer(filePath, content);
         return `File loaded: ${filePath}`;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to fetch file";
@@ -149,27 +155,34 @@ export function useCopilotActions() {
     handler: async ({ files, diagramType }) => {
       const graphType = diagramType as "dependency" | "flow" | "architecture";
 
+      if (repo.repoInfo && files.length > 0) {
+        const fileDataPromises = files.slice(0, 20).map(async (f) => {
+          try {
+            const content = await fetchFile(repo.repoInfo!.owner, repo.repoInfo!.repo, f, repo.repoInfo!.branch);
+            return { path: f, imports: extractImports(content) };
+          } catch {
+            return { path: f, imports: [] };
+          }
+        });
+        const fileData = await Promise.all(fileDataPromises);
+        const graph = buildDependencyNodes(fileData);
+        for (const node of graph.nodes) {
+          node.type = categorizeFileType(node.metadata?.fullPath || node.id);
+        }
+        setVisualization(graph.nodes, graph.edges, graphType);
+        return `Diagram generated with ${graph.nodes.length} nodes and ${graph.edges.length} dependency edges.`;
+      }
+
       const flowNodes: FlowNode[] = files.map((f, i) => ({
         id: `node-${i}`,
         type: categorizeFileType(f),
         label: f.split("/").pop() || f,
         metadata: { fullPath: f },
       }));
-
-      const flowEdges: FlowEdge[] = [];
-      for (let i = 1; i < flowNodes.length; i++) {
-        flowEdges.push({
-          id: `edge-${i}`,
-          source: flowNodes[0].id,
-          target: flowNodes[i].id,
-          type: "flow" as const,
-        });
-      }
-
-      setVisualization(flowNodes, flowEdges, graphType);
+      setVisualization(flowNodes, [], graphType);
       return `Diagram generated with ${flowNodes.length} nodes.`;
     },
-  }, []);
+  }, [repo.repoInfo]);
 
   useCopilotAction({
     name: "highlightCode",
@@ -201,16 +214,8 @@ export function useCopilotActions() {
       }
 
       try {
-        const repoUrl = `${repo.repoInfo.owner}/${repo.repoInfo.repo}`;
-        const res = await fetch(
-          `/api/github/file?repo=${encodeURIComponent(repoUrl)}&path=${encodeURIComponent(filePath)}&ref=${encodeURIComponent(repo.repoInfo.branch)}`
-        );
-        if (!res.ok) {
-          const body = await res.json();
-          throw new Error(body.error || "Failed to fetch file");
-        }
-        const data = await res.json();
-        setCodeViewer(data.path, data.content, lines, explanation);
+        const content = await fetchFile(repo.repoInfo.owner, repo.repoInfo.repo, filePath, repo.repoInfo.branch);
+        setCodeViewer(filePath, content, lines, explanation);
         return `Showing ${filePath} with ${lines.length} highlighted lines.`;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to fetch file";

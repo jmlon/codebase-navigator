@@ -59,6 +59,8 @@ export function VisualizationCanvas() {
     setDirection((d) => (d === "TB" ? "LR" : "TB"));
   }, []);
 
+  const setRepoError = useAppStore((s) => s.setRepoError);
+
   const onNodeClick = useCallback(
     async (_: React.MouseEvent, node: Node) => {
       const metadata = (node.data as Record<string, unknown>)?.metadata as Record<string, string> | undefined;
@@ -67,18 +69,15 @@ export function VisualizationCanvas() {
 
       setSelectedFile(fullPath);
       try {
-        const repoUrl = `${repo.repoInfo.owner}/${repo.repoInfo.repo}`;
-        const res = await fetch(
-          `/api/github/file?repo=${encodeURIComponent(repoUrl)}&path=${encodeURIComponent(fullPath)}&ref=${encodeURIComponent(repo.repoInfo.branch)}`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        setCodeViewer(data.path, data.content);
-      } catch {
-        // silently fail
+        const { fetchFile } = await import("@/lib/fetch-file");
+        const content = await fetchFile(repo.repoInfo.owner, repo.repoInfo.repo, fullPath, repo.repoInfo.branch);
+        setCodeViewer(fullPath, content);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Failed to load file";
+        setRepoError(msg);
       }
     },
-    [repo.repoInfo, setSelectedFile, setCodeViewer]
+    [repo.repoInfo, setSelectedFile, setCodeViewer, setRepoError]
   );
 
   const isEmpty = flowNodes.length === 0;

@@ -22,13 +22,26 @@ function loadFromStorage(): SettingsState {
   }
 }
 
-function saveToStorage(state: SettingsState) {
+function persist(state: SettingsState) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // ignore
   }
+  syncToServer(state);
+}
+
+function syncToServer(state: SettingsState) {
+  const cfg = state.provider === "openai"
+    ? { baseURL: "https://api.openai.com/v1", apiKey: state.openaiApiKey, model: state.openaiModel }
+    : { baseURL: state.ollamaEndpoint, apiKey: "ollama", model: state.ollamaModel };
+
+  fetch("/api/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cfg),
+  }).catch(() => {});
 }
 
 interface SettingsStore extends SettingsState {
@@ -46,27 +59,28 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   setProvider: (provider) => {
     set({ provider });
-    saveToStorage({ ...get(), provider });
+    persist({ ...get(), provider });
   },
   setOpenaiApiKey: (openaiApiKey) => {
     set({ openaiApiKey });
-    saveToStorage({ ...get(), openaiApiKey });
+    persist({ ...get(), openaiApiKey });
   },
   setOpenaiModel: (openaiModel) => {
     set({ openaiModel });
-    saveToStorage({ ...get(), openaiModel });
+    persist({ ...get(), openaiModel });
   },
   setOllamaEndpoint: (ollamaEndpoint) => {
     set({ ollamaEndpoint });
-    saveToStorage({ ...get(), ollamaEndpoint });
+    persist({ ...get(), ollamaEndpoint });
   },
   setOllamaModel: (ollamaModel) => {
     set({ ollamaModel });
-    saveToStorage({ ...get(), ollamaModel });
+    persist({ ...get(), ollamaModel });
   },
   hydrate: () => {
     const stored = loadFromStorage();
     set(stored);
+    syncToServer(stored);
   },
   getActiveConfig: () => {
     const s = get();

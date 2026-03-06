@@ -4,16 +4,37 @@ import {
   copilotRuntimeNextJSAppRouterEndpoint,
 } from "@copilotkit/runtime";
 import { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import OpenAI from "openai";
 
-export const POST = async (req: NextRequest) => {
-  const headerBaseURL = req.headers.get("x-llm-base-url");
-  const headerApiKey = req.headers.get("x-llm-api-key");
-  const headerModel = req.headers.get("x-llm-model");
+const COOKIE_NAME = "cn-llm-settings";
 
-  const baseURL = headerBaseURL || process.env.OPENAI_BASE_URL || "http://localhost:11434/v1";
-  const apiKey = headerApiKey || process.env.OPENAI_API_KEY || "ollama";
-  const model = headerModel || process.env.OPENAI_MODEL || "qwen2.5";
+async function getLLMConfig(): Promise<{ baseURL: string; apiKey: string; model: string }> {
+  const jar = await cookies();
+  const raw = jar.get(COOKIE_NAME)?.value;
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed.baseURL && parsed.model) {
+        return {
+          baseURL: parsed.baseURL,
+          apiKey: parsed.apiKey || "ollama",
+          model: parsed.model,
+        };
+      }
+    } catch {
+      // fall through to defaults
+    }
+  }
+  return {
+    baseURL: process.env.OPENAI_BASE_URL || "http://localhost:11434/v1",
+    apiKey: process.env.OPENAI_API_KEY || "ollama",
+    model: process.env.OPENAI_MODEL || "qwen2.5",
+  };
+}
+
+export const POST = async (req: NextRequest) => {
+  const { baseURL, apiKey, model } = await getLLMConfig();
 
   const openai = new OpenAI({ baseURL, apiKey });
   const serviceAdapter = new OpenAIAdapter({ openai, model });

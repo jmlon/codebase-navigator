@@ -1,19 +1,10 @@
 import { Octokit } from "@octokit/rest";
 import type { TreeNode } from "@/types";
 
-let octokitInstance: Octokit | null = null;
-
 export function getOctokit(): Octokit {
-  if (!octokitInstance) {
-    octokitInstance = new Octokit({
-      auth: process.env.GITHUB_TOKEN || undefined,
-    });
-  }
-  return octokitInstance;
-}
-
-export function resetOctokit(): void {
-  octokitInstance = null;
+  return new Octokit({
+    auth: process.env.GITHUB_TOKEN || undefined,
+  });
 }
 
 export function parseRepoUrl(url: string): { owner: string; repo: string } {
@@ -127,18 +118,21 @@ export async function searchCode(
   repo: string,
   query: string
 ): Promise<
-  { path: string; matches: { fragment: string; lineNumber: number }[] }[]
+  { path: string; matches: { fragment: string }[] }[]
 > {
   const octokit = getOctokit();
   const q = `${query} repo:${owner}/${repo}`;
 
-  const { data } = await octokit.search.code({ q, per_page: 20 });
+  const { data } = await octokit.search.code({
+    q,
+    per_page: 20,
+    headers: { accept: "application/vnd.github.text-match+json" },
+  });
 
   return data.items.map((item) => ({
     path: item.path,
     matches: (item.text_matches ?? []).map((tm) => ({
       fragment: tm.fragment ?? "",
-      lineNumber: 0,
     })),
   }));
 }

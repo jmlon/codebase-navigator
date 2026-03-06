@@ -1,39 +1,38 @@
 "use client";
 
+import { useCallback } from "react";
 import { useAppStore } from "@/store";
+import { fetchFile } from "@/lib/fetch-file";
 
 export function AnalysisPanel() {
   const analysis = useAppStore((s) => s.analysis);
-  const repo = useAppStore((s) => s.repo);
+  const repoInfo = useAppStore((s) => s.repo.repoInfo);
   const setCodeViewer = useAppStore((s) => s.setCodeViewer);
   const setSelectedFile = useAppStore((s) => s.setSelectedFile);
+  const setRepoError = useAppStore((s) => s.setRepoError);
 
-  const handleFileClick = async (filePath: string) => {
-    if (!repo.repoInfo) return;
+  const handleFileClick = useCallback(async (filePath: string) => {
+    if (!repoInfo) return;
 
     setSelectedFile(filePath);
 
     try {
-      const repoUrl = `${repo.repoInfo.owner}/${repo.repoInfo.repo}`;
-      const res = await fetch(
-        `/api/github/file?repo=${encodeURIComponent(repoUrl)}&path=${encodeURIComponent(filePath)}&ref=${encodeURIComponent(repo.repoInfo.branch)}`
-      );
-      if (!res.ok) return;
-      const data = await res.json();
+      const content = await fetchFile(repoInfo.owner, repoInfo.repo, filePath, repoInfo.branch);
 
       const relevantFile = analysis.result?.relevantFiles.find(
         (f) => f.path === filePath
       );
       setCodeViewer(
-        data.path,
-        data.content,
+        filePath,
+        content,
         relevantFile?.highlightedLines ?? [],
         relevantFile?.relevance
       );
-    } catch {
-      // silently fail
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load file";
+      setRepoError(msg);
     }
-  };
+  }, [repoInfo, analysis.result, setSelectedFile, setCodeViewer, setRepoError]);
 
   if (!analysis.result && !analysis.loading) {
     return null;

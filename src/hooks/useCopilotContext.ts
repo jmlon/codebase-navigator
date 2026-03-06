@@ -6,10 +6,13 @@ import { useAppStore } from "@/store";
 import { flattenTree } from "@/lib/analyzer";
 import type { TreeNode } from "@/types";
 
+const MAX_FILE_PATHS = 500;
+
 function treeToPathList(tree: TreeNode | null): string | null {
   if (!tree) return null;
   const paths = flattenTree(tree);
-  return paths.join("\n");
+  if (paths.length <= MAX_FILE_PATHS) return paths.join("\n");
+  return paths.slice(0, MAX_FILE_PATHS).join("\n") + `\n... and ${paths.length - MAX_FILE_PATHS} more files`;
 }
 
 export function useCopilotContext() {
@@ -25,7 +28,7 @@ export function useCopilotContext() {
   }, [repo.repoInfo]);
 
   useCopilotReadable({
-    description: "Complete list of file paths in the repository, one per line. Use these paths with the analyzeRepository and fetchFileContent actions.",
+    description: `File paths in the repository (max ${MAX_FILE_PATHS}), one per line. Use these paths with the analyzeRepository and fetchFileContent actions.`,
     value: fileList,
   }, [fileList]);
 
