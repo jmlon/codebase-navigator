@@ -41,6 +41,13 @@ ${contextString}`;
     [repo.repoInfo, fileList]
   );
 
+  const suggestions = [
+    { title: "How does this repo work?", message: "How does this repo work?" },
+    { title: "What files implement the API layer?", message: "What files implement the API layer?" },
+    { title: "Show the request flow for user login.", message: "Show the request flow for user login." },
+    { title: "Where is the database configured?", message: "Where is the database configured?" },
+  ];
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
       <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-3">
@@ -49,9 +56,10 @@ ${contextString}`;
       <div className="relative flex-1 overflow-hidden">
         <CopilotChat
           makeSystemMessage={makeSystemMessage}
+          suggestions={suggestions}
           labels={{
             title: "Codebase Navigator",
-            initial: "Ask me anything about the loaded repository. For example:\n\n• How does this repo work?\n• What files implement the API layer?\n• Show the request flow for user login.\n• Where is the database configured?",
+            initial: "Ask me anything about the loaded repository.",
           }}
           className="h-full"
         />
