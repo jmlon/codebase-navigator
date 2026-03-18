@@ -1,6 +1,6 @@
 "use client";
 
-import { useCopilotAction } from "@copilotkit/react-core";
+import { useFrontendTool } from "@copilotkit/react-core";
 import { useAppStore } from "@/store";
 import { findFilesByQuery, categorizeFileType, flattenTree, extractImports, buildDependencyNodes } from "@/lib/analyzer";
 import { fetchFile } from "@/lib/fetch-file";
@@ -14,7 +14,7 @@ export function useCopilotActions() {
   const setVisualization = useAppStore((s) => s.setVisualization);
   const setCodeViewer = useAppStore((s) => s.setCodeViewer);
 
-  useCopilotAction({
+  useFrontendTool({
     name: "analyzeRepository",
     description:
       "Analyze the loaded repository to answer a question. Call this whenever the user asks about the repo structure, how it works, or about specific features. The handler automatically finds relevant files and generates a visualization.",
@@ -106,7 +106,7 @@ export function useCopilotActions() {
     },
   }, [repo.tree, repo.repoInfo]);
 
-  useCopilotAction({
+  useFrontendTool({
     name: "fetchFileContent",
     description:
       "Fetch and display a file from the repository in the code viewer panel.",
@@ -134,7 +134,7 @@ export function useCopilotActions() {
     },
   }, [repo.repoInfo]);
 
-  useCopilotAction({
+  useFrontendTool({
     name: "generateFlowDiagram",
     description:
       "Generate a visual diagram from a list of file paths. Automatically creates nodes and layout.",
@@ -184,7 +184,7 @@ export function useCopilotActions() {
     },
   }, [repo.repoInfo]);
 
-  useCopilotAction({
+  useFrontendTool({
     name: "highlightCode",
     description:
       "Show a file in the code viewer with specific lines highlighted.",
