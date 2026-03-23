@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useCopilotReadable } from "@copilotkit/react-core";
+import { useAgentContext } from "@copilotkit/react-core/v2";
 import { useAppStore } from "@/store";
 import { flattenTree } from "@/lib/analyzer";
 import type { TreeNode } from "@/types";
@@ -22,30 +22,37 @@ export function useCopilotContext() {
 
   const fileList = useMemo(() => treeToPathList(repo.tree), [repo.tree]);
 
-  useCopilotReadable({
+  useAgentContext({
     description: "Current repository information including owner, name, and branch",
-    value: repo.repoInfo,
-  }, [repo.repoInfo]);
+    value: repo.repoInfo ? JSON.stringify(repo.repoInfo) : null,
+  });
 
-  useCopilotReadable({
+  useAgentContext({
     description: `File paths in the repository (max ${MAX_FILE_PATHS}), one per line. Use these paths with the analyzeRepository and fetchFileContent actions.`,
     value: fileList,
-  }, [fileList]);
+  });
 
-  useCopilotReadable({
+  useAgentContext({
     description: "Currently selected file path in the repository",
     value: repo.selectedFile,
-  }, [repo.selectedFile]);
+  });
 
-  useCopilotReadable({
+  useAgentContext({
     description: "Latest analysis result including explanation, relevant files, and flow diagram",
-    value: analysis.result,
-  }, [analysis.result]);
+    value: analysis.result ? JSON.stringify(analysis.result) : null,
+  });
 
-  useCopilotReadable({
+  useAgentContext({
     description: "Currently viewed file content and highlighted lines in the code viewer",
     value: codeViewer.filePath
-      ? { filePath: codeViewer.filePath, highlightedLines: codeViewer.highlightedLines }
+      ? JSON.stringify({ filePath: codeViewer.filePath, highlightedLines: codeViewer.highlightedLines })
       : null,
-  }, [codeViewer.filePath, codeViewer.highlightedLines]);
+  });
+
+  useAgentContext({
+    description: "System instructions",
+    value: repo.repoInfo
+      ? `You are a Codebase Navigator assistant. You MUST use tool calls to answer questions. NEVER answer with plain text about the repository. ALWAYS call a tool.\n\nLOADED REPOSITORY: ${repo.repoInfo.owner}/${repo.repoInfo.repo} (branch: ${repo.repoInfo.branch})\n\nCRITICAL RULES:\n1. For ANY question about the repository call the "analyzeRepository" tool. Pass "query" = the user's question and "explanation" = your detailed answer referencing actual file paths.\n2. To show a file, call "fetchFileContent" with the exact file path.\n3. To generate a diagram, call "generateFlowDiagram" with file paths and a diagram type.\n4. To highlight specific lines, call "highlightCode".\n5. NEVER respond with only text. ALWAYS call a tool first.\n6. Use ONLY file paths from the file list above. The repository IS loaded.`
+      : "You are a Codebase Navigator assistant. No repository is currently loaded. Ask the user to paste a GitHub repository URL in the Repository panel.",
+  });
 }

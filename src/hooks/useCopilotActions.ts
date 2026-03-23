@@ -1,6 +1,7 @@
 "use client";
 
-import { useFrontendTool } from "@copilotkit/react-core";
+import { useFrontendTool } from "@copilotkit/react-core/v2";
+import { z } from "zod";
 import { useAppStore } from "@/store";
 import { findFilesByQuery, categorizeFileType, flattenTree, extractImports, buildDependencyNodes } from "@/lib/analyzer";
 import { fetchFile } from "@/lib/fetch-file";
@@ -18,25 +19,11 @@ export function useCopilotActions() {
     name: "analyzeRepository",
     description:
       "Analyze the loaded repository to answer a question. Call this whenever the user asks about the repo structure, how it works, or about specific features. The handler automatically finds relevant files and generates a visualization.",
-    parameters: [
-      {
-        name: "query",
-        type: "string",
-        description: "The user's question about the codebase",
-        required: true,
-      },
-      {
-        name: "explanation",
-        type: "string",
-        description: "Your detailed explanation answering the question, referencing specific files from the repository",
-        required: true,
-      },
-    ],
+    parameters: z.object({
+      query: z.string().describe("The user's question about the codebase"),
+      explanation: z.string().describe("Your detailed explanation answering the question, referencing specific files from the repository"),
+    }),
     handler: async ({ query, explanation }) => {
-      if (!query || !explanation) {
-        return "Please provide both a query and explanation.";
-      }
-
       setAnalysisLoading(true);
       setAnalysisError(null);
 
@@ -110,14 +97,9 @@ export function useCopilotActions() {
     name: "fetchFileContent",
     description:
       "Fetch and display a file from the repository in the code viewer panel.",
-    parameters: [
-      {
-        name: "filePath",
-        type: "string",
-        description: "The exact file path to fetch (e.g. src/main.rs)",
-        required: true,
-      },
-    ],
+    parameters: z.object({
+      filePath: z.string().describe("The exact file path to fetch (e.g. src/main.rs)"),
+    }),
     handler: async ({ filePath }) => {
       if (!repo.repoInfo) {
         return "No repository loaded.";
@@ -138,23 +120,11 @@ export function useCopilotActions() {
     name: "generateFlowDiagram",
     description:
       "Generate a visual diagram from a list of file paths. Automatically creates nodes and layout.",
-    parameters: [
-      {
-        name: "files",
-        type: "string[]",
-        description: "List of file paths to include in the diagram",
-        required: true,
-      },
-      {
-        name: "diagramType",
-        type: "string",
-        description: "Type: dependency, flow, or architecture",
-        required: true,
-      },
-    ],
+    parameters: z.object({
+      files: z.array(z.string()).describe("List of file paths to include in the diagram"),
+      diagramType: z.enum(["dependency", "flow", "architecture"]).describe("Type of diagram to generate"),
+    }),
     handler: async ({ files, diagramType }) => {
-      const graphType = diagramType as "dependency" | "flow" | "architecture";
-
       if (repo.repoInfo && files.length > 0) {
         const fileDataPromises = files.slice(0, 20).map(async (f) => {
           try {
@@ -169,7 +139,7 @@ export function useCopilotActions() {
         for (const node of graph.nodes) {
           node.type = categorizeFileType(node.metadata?.fullPath || node.id);
         }
-        setVisualization(graph.nodes, graph.edges, graphType);
+        setVisualization(graph.nodes, graph.edges, diagramType);
         return `Diagram generated with ${graph.nodes.length} nodes and ${graph.edges.length} dependency edges.`;
       }
 
@@ -179,7 +149,7 @@ export function useCopilotActions() {
         label: f.split("/").pop() || f,
         metadata: { fullPath: f },
       }));
-      setVisualization(flowNodes, [], graphType);
+      setVisualization(flowNodes, [], diagramType);
       return `Diagram generated with ${flowNodes.length} nodes.`;
     },
   }, [repo.repoInfo]);
@@ -188,26 +158,11 @@ export function useCopilotActions() {
     name: "highlightCode",
     description:
       "Show a file in the code viewer with specific lines highlighted.",
-    parameters: [
-      {
-        name: "filePath",
-        type: "string",
-        description: "Path of the file to display",
-        required: true,
-      },
-      {
-        name: "lines",
-        type: "number[]",
-        description: "Line numbers to highlight",
-        required: true,
-      },
-      {
-        name: "explanation",
-        type: "string",
-        description: "Explanation of the highlighted lines",
-        required: true,
-      },
-    ],
+    parameters: z.object({
+      filePath: z.string().describe("Path of the file to display"),
+      lines: z.array(z.number()).describe("Line numbers to highlight"),
+      explanation: z.string().describe("Explanation of the highlighted lines"),
+    }),
     handler: async ({ filePath, lines, explanation }) => {
       if (!repo.repoInfo) {
         return "No repository loaded.";

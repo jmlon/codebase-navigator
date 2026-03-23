@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { CopilotKit } from "@copilotkit/react-core";
+import { CopilotKitProvider } from "@copilotkit/react-core/v2";
 import { useSettingsStore } from "@/store/settings";
 
 export function CopilotProvider({ children }: { children: React.ReactNode }) {
@@ -12,8 +12,8 @@ export function CopilotProvider({ children }: { children: React.ReactNode }) {
   }, [hydrate]);
 
   return (
-    <CopilotKit runtimeUrl="/api/copilotkit">
+    <CopilotKitProvider runtimeUrl="/api/copilotkit">
       {children}
-    </CopilotKit>
+    </CopilotKitProvider>
   );
 }
