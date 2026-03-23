@@ -68,18 +68,18 @@ We self-hosted the CopilotKit runtime inside a Next.js API route. It works with 
 
 But the real power is in how CopilotKit connects the AI to the application:
 
-**Readable Context** (`useCopilotReadable`) -- The AI always knows what repo is loaded, what files exist (up to 500 paths to stay within token limits), what's currently selected, and what the last analysis found. It's not guessing. It's informed.
+**Agent Context** (`useAgentContext`) -- The AI always knows what repo is loaded, what files exist (up to 500 paths to stay within token limits), what's currently selected, and what the last analysis found. It's not guessing. It's informed. We migrated to CopilotKit V2, which consolidates everything into `@copilotkit/react-core/v2` and replaces the old `useCopilotReadable` hook with `useAgentContext` -- a cleaner API that takes structured JSON-serializable context objects.
 
-**Actions** (`useCopilotAction`) -- Four actions that go far beyond text responses:
+**Frontend Tools** (`useFrontendTool`) -- Four tools that go far beyond text responses, now defined with **Zod schemas** for full type safety:
 
 - `analyzeRepository` -- Finds relevant files, fetches their contents, extracts actual `import`/`require` statements, resolves paths, and builds a **real dependency graph** with proper edges. Then pushes everything to the Zustand store, which triggers reactive updates across all panels.
 - `fetchFileContent` -- Opens any file in the code viewer with one click.
 - `generateFlowDiagram` -- Creates focused visualizations for specific file sets.
 - `highlightCode` -- Marks specific lines with explanations.
 
-The critical insight: **CopilotKit actions don't return text. They update state.** When the AI calls `analyzeRepository`, it doesn't just tell you about dependencies -- it *draws* them. The graph appears. The files light up. The code viewer scrolls to the relevant section.
+The critical insight: **CopilotKit tools don't return text. They update state.** When the AI calls `analyzeRepository`, it doesn't just tell you about dependencies -- it *draws* them. The graph appears. The files light up. The code viewer scrolls to the relevant section.
 
-That's the difference between a chatbot and an AI-native application.
+That's the difference between a chatbot and an AI-native application. And with V2's Zod-based parameter schemas, the tool definitions are more concise and the handler arguments are fully typed -- no more `as string` casts.
 
 ### 3. React Flow + Dagre -- The Canvas
 
@@ -176,7 +176,7 @@ We didn't build Codebase Navigator to show off a tech stack. We built it to demo
 
 1. **MCP gives AI structured access to external systems** -- GitHub repos become queryable data sources, not opaque URLs.
 
-2. **CopilotKit turns AI responses into UI actions** -- The AI doesn't just *talk about* code. It *shows* you the code, *draws* the graph, *highlights* the lines.
+2. **CopilotKit V2 turns AI responses into UI actions** -- The AI doesn't just *talk about* code. It *shows* you the code, *draws* the graph, *highlights* the lines. `useFrontendTool` + Zod schemas make the tool contracts explicit and type-safe end to end.
 
 3. **Zenflow turns AI coding from chaotic to systematic** -- Planning, implementation, verification, review, and deployment as a repeatable process.
 
