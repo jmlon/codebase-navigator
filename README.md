@@ -10,6 +10,12 @@ An AI-powered tool for exploring and understanding GitHub repositories. Connect 
 - **File tree browser** — Navigate the full repository structure
 - **Configurable LLM backend** — Switch between OpenAI and Ollama (local) from the in-app settings
 
+
+
+https://github.com/user-attachments/assets/f8044f52-67dc-4403-99a6-91214b1e7547
+
+
+
 ## Tech Stack
 
 - [Next.js](https://nextjs.org) 16 / React 19
