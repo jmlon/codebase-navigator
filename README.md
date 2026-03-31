@@ -12,7 +12,10 @@ An AI-powered tool for exploring and understanding GitHub repositories. Connect 
 
 
 
-https://github.com/user-attachments/assets/f8044f52-67dc-4403-99a6-91214b1e7547
+
+
+https://github.com/user-attachments/assets/8aece886-2e34-4b69-bd65-d9963620d76e
+
 
 
 
